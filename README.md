@@ -16,76 +16,66 @@ Ele presta uma homenagem ao clima característico da cidade:
 
 > **Observação**: As curvas mostram **sensação térmica (feels like)**, não a temperatura do ar convencional.
 
-## Arquitetura de dados
+## Arquitetura de dados (Notebook)
 
-O notebook segue o padrão **Medalhão (Bronze → Silver → Gold)**:
+O notebook segue um fluxo em **duas camadas principais** do padrão Medalhão:
 
-- **Bronze**: ingestão bruta dos dados meteorológicos (BDMEP/INMET).
-- **Silver**: limpeza, padronização de colunas, cálculo de *feels like* e ajustes de séries.
-- **Gold**: agregações por faixa horária/ano, estatísticas (mín/média/máx) e *features* prontas para visualização.
+- **Bronze**: ingestão bruta dos dados meteorológicos (BDMEP/INMET) via Databricks SQL (`read_files(...)`).
+- **Silver**: limpeza, *casting*, padronização de datas/horas (fuso **America/Belem**), cálculo e organização das séries que alimentam os gráficos.
 
-As visualizações foram criadas com **Matplotlib** e **Seaborn**.
-A **composição final** (tipografia/elementos gráficos) foi feita no **GIMP**, para aplicação de fontes regionais personalizadas.
+> Observação: o notebook inclui *magics* `%sql` (Databricks) e cria tabelas em `projetos.belem.*`.  
+> Ajuste o **catálogo/esquema** e os **caminhos** conforme o seu ambiente (por exemplo, caminho do arquivo CSV no `read_files(...)`).
+
+## Dependências
+
+- Python: `pandas`, `numpy`, `matplotlib`, `seaborn`
+- Geoespacial / forma da arte: `geopandas`, `shapely`, `geobr`, `scipy`
+- (Opcional) `jupyter` para executar localmente
+
+Instalação rápida (ambiente local):
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -U pip
+pip install pandas numpy matplotlib seaborn geopandas shapely geobr scipy jupyter
+jupyter notebook "Equatorial _ Quente _ Umido.ipynb"
+```
+
+Em **Databricks**, adicione estes pacotes como **Libraries** do cluster (pypi) ou via `%pip install ...` conforme política do workspace.
 
 ## Estrutura do repositório
 
 ```
 .
-├── Equatorial _ Quente _ Umido.ipynb   # Notebook com todo o código do pipeline/visual
+├── Equatorial _ Quente _ Umido.ipynb   # Notebook com todo o pipeline/visual (inclui cells %sql do Databricks)
 ├── Fonts/                              # Fontes usadas na composição (ver licenças específicas)
 ├── Referencias/                        # Estudos visuais, referências e rascunhos
 └── Resultado/
     ├── imagem_final.png                # Peça final (composição no GIMP)
-    ├── imagem_original_python.png      # Export direto do Python (antes do GIMP)
+    ├── imagem_original_python.png      # Export direto do Python (antes do GIMP) — ver nota abaixo
     └── projeto_gimp.xcf                # Arquivo .xcf do GIMP (camadas/fontes)
+```
+
+### Nota sobre o caminho de saída da imagem gerada no Python
+
+No notebook, a variável `out_png` pode estar definida para um caminho similar a um **Volume** do Databricks (ex.: `/Volumes/projetos/belem/raw/belem_combo.png`).
+Para manter tudo dentro do repositório, **recomenda-se** alterar para:
+
+```python
+out_png = "Resultado/imagem_original_python.png"
+fig.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.02, transparent=True, facecolor="none")
 ```
 
 ## Como reproduzir
 
-### 1) Obter dados do INMET (BDMEP)
-- Portal: https://bdmep.inmet.gov.br/ (BDMEP – Banco de Dados Meteorológicos para Ensino e Pesquisa).
-- O acesso exige cadastro. Baixe as séries para Belém referentes aos **últimos 5 anos**.
-- Salve os arquivos numa pasta acessível pelo notebook (o próprio notebook indica onde colocá-los).
-
-### 2) Ambiente local (opção)
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -U pip
-pip install pandas numpy matplotlib seaborn jupyter
-jupyter notebook "Equatorial _ Quente _ Umido.ipynb"
-```
-
-### 3) Databricks (opção)
-1. Importe o notebook `Equatorial _ Quente _ Umido.ipynb` para seu Workspace.
-2. Use um cluster com Runtime recente (inclua `matplotlib` e `seaborn`).
-3. Aponte os caminhos dos dados (Bronze) no notebook.
-4. Execute as células Bronze → Silver → Gold → Visual.
-
-### 4) Geração do visual e composição
-- O notebook exporta `Resultado/imagem_original_python.png`.
-- Abra `Resultado/projeto_gimp.xcf` no GIMP para aplicar as fontes de **Fonts/** e compor a arte final (estrela, títulos “Equatorial / Quente / Úmido”, etc.).
-- Exporte `Resultado/imagem_final.png` (também destacada no topo deste README).
-
-## Fontes e créditos
-
-- **Dados meteorológicos**: INMET/BDMEP — https://bdmep.inmet.gov.br/
-- **Mapa de referência para latitude**: IBGE (utilizado para dimensionamento/posicionamento da estrela na seção “Equatorial”).
-- **Tipografia**: ver diretório `Fonts/` e o arquivo **FONTS-LICENSES.md** (cada fonte possui sua própria licença).
-- **Código**: MIT (ver `LICENSE`).
-- **Imagens/arte do repositório**: CC BY 4.0 (ver `ASSETS-LICENSE.md`).
+1. Baixe os dados do **INMET/BDMEP** para Belém (últimos 5 anos) em https://bdmep.inmet.gov.br/ (cadastro necessário).
+2. Ajuste o caminho do CSV (camada Bronze) no notebook — a leitura usa `read_files(..., header => true, skipRows => 10, delimiter => ';')`.
+3. Execute as células Bronze → Silver → Visual.
+4. (Opcional) Abra `Resultado/projeto_gimp.xcf` no **GIMP** para aplicar as fontes de `Fonts/` e compor a arte final. Exporte `Resultado/imagem_final.png`.
 
 ## Licenças
 
-- **Código**: [MIT](LICENSE)
-- **Assets visuais (imagens, layouts, mockups)**: [CC BY 4.0](ASSETS-LICENSE.md) — permite **qualquer modificação**, inclusive uso comercial, com **atribuição**.
-- **Fontes**: licenças próprias do(s) autor(es). Veja `FONTS-LICENSES.md` e mantenha os arquivos de licença de cada fonte.
-
-## Contribuindo
-
-1. Abra uma *issue* descrevendo melhorias/bugs.
-2. Para PRs, siga o estilo do notebook e descreva claramente o passo da camada (Bronze/Silver/Gold) que foi alterado.
-3. Evite commitar dados brutos do INMET que estejam sob termos específicos de uso.
+- **Código**: [MIT](LICENSE) — permite uso e modificação para quaisquer fins.
 
 ## Autor
 
